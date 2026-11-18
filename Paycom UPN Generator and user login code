@@ -1,0 +1,1319 @@
+{
+    "definition": {
+        "metadata": {
+            "notes": {}
+        },
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "When_an_HTTP_request_is_received": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "schemas": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "Operations": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "method": {
+                                            "type": "string"
+                                        },
+                                        "bulkId": {
+                                            "type": "string"
+                                        },
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "externalId": {
+                                                    "type": "string"
+                                                },
+                                                "userName": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "givenName": {
+                                                            "type": "string"
+                                                        },
+                                                        "familyName": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "method",
+                                        "bulkId",
+                                        "path",
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "actions": {
+            "Provision_User_Details": {
+                "type": "Http",
+                "inputs": {
+                    "uri": "https://graph.microsoft.com/v1.0/servicePrincipals/5df0722e-bbcd-4cf3-a801-c8d67db21394/synchronization/jobs/API2AAD.47bf1278abdb470ab09eb69052459de2.baa85dab-1717-4238-af36-3f2a8263e26b/bulkUpload",
+                    "method": "POST",
+                    "headers": {
+                        "Content-Type": "application/scim+json"
+                    },
+                    "body": {
+                        "schemas": [
+                            "urn:ietf:params:scim:api:messages:2.0:BulkRequest"
+                        ],
+                        "Operations": "@variables('ProvisionOperations')",
+                        "failOnErrors": null
+                    },
+                    "authentication": {
+                        "type": "ManagedServiceIdentity",
+                        "audience": "https://graph.microsoft.com"
+                    }
+                },
+                "runAfter": {
+                    "For_each": [
+                        "Succeeded"
+                    ]
+                },
+                "runtimeConfiguration": {
+                    "contentTransfer": {
+                        "transferMode": "Chunked"
+                    }
+                }
+            },
+            "DumpTrigger": {
+                "type": "Compose",
+                "inputs": "@string(triggerBody())",
+                "runAfter": {
+                    "Provision_User_Details": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "DebugOperations": {
+                "type": "Compose",
+                "inputs": "@body('Provision_User_Details')?['Operations']",
+                "runAfter": {
+                    "DumpTrigger": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Compose_Users": {
+                "type": "Compose",
+                "inputs": {
+                    "schemas": [
+                        "urn:ietf:params:scim:api:messages:2.0:BulkRequest"
+                    ],
+                    "Operations": [
+                        {
+                            "method": "POST",
+                            "bulkId": "A43B",
+                            "path": "/Users",
+                            "data": {
+                                "schemas": [
+                                    "urn:ietf:params:scim:schemas:core:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User"
+                                ],
+                                "externalId": "A43B",
+                                "userName": "soak.test@elcarwash.com",
+                                "name": {
+                                    "formatted": "Soak Test",
+                                    "givenName": "Soaka",
+                                    "familyName": "Test"
+                                },
+                                "displayName": "Soak Test",
+                                "nickName": "Soak",
+                                "title": "Site Manager",
+                                "preferredLanguage": "en-US",
+                                "active": true,
+                                "emails": [
+                                    {
+                                        "value": "soak.test@elcarwash.com",
+                                        "type": "work",
+                                        "primary": true
+                                    }
+                                ],
+                                "phoneNumbers": [
+                                    {
+                                        "value": "+1 305 555 0105",
+                                        "type": "work"
+                                    }
+                                ],
+                                "addresses": [
+                                    {
+                                        "type": "work",
+                                        "primary": true,
+                                        "streetAddress": "100 Example Ave",
+                                        "locality": "Miami",
+                                        "region": "FL",
+                                        "postalCode": "33101",
+                                        "country": "US"
+                                    }
+                                ],
+                                "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+                                    "employeeNumber": "A43B",
+                                    "organization": "El Car Wash",
+                                    "division": "Operations",
+                                    "department": "Site Operationsa",
+                                    "costCenter": "CC-101"
+                                },
+                                "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User": {
+                                    "Persona": "SM and Above",
+                                    "EmployeeType": "Employee",
+                                    "OfficeLocation": "Site 101 - Miami",
+                                    "UsageLocation": "US",
+                                    "HireDate": "2026-11-02T00:00:00Z",
+                                    "TermDate": ""
+                                }
+                            }
+                        },
+                        {
+                            "method": "POST",
+                            "bulkId": "A437",
+                            "path": "/Users",
+                            "data": {
+                                "schemas": [
+                                    "urn:ietf:params:scim:schemas:core:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User"
+                                ],
+                                "externalId": "A437",
+                                "userName": "tunnel.test@elcarwash.com",
+                                "name": {
+                                    "formatted": "Tunnel Test",
+                                    "givenName": "Tunnel",
+                                    "familyName": "Test"
+                                },
+                                "displayName": "Tunnel Test",
+                                "nickName": "Tunnel",
+                                "title": "Tunnel Attendant",
+                                "preferredLanguage": "en-US",
+                                "active": true,
+                                "emails": [
+                                    {
+                                        "value": "tunnel.test@elcarwash.com",
+                                        "type": "work",
+                                        "primary": true
+                                    }
+                                ],
+                                "phoneNumbers": [
+                                    {
+                                        "value": "+1 305 555 0101",
+                                        "type": "work"
+                                    }
+                                ],
+                                "addresses": [
+                                    {
+                                        "type": "work",
+                                        "primary": true,
+                                        "streetAddress": "100 Example Ave",
+                                        "locality": "Miami",
+                                        "region": "FL",
+                                        "postalCode": "33101",
+                                        "country": "US"
+                                    }
+                                ],
+                                "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+                                    "employeeNumber": "A437",
+                                    "organization": "El Car Wash",
+                                    "division": "Operations",
+                                    "department": "Site Operations",
+                                    "costCenter": "CC-101",
+                                    "manager": {
+                                        "value": "A43B"
+                                    }
+                                },
+                                "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User": {
+                                    "Persona": "Frontline",
+                                    "EmployeeType": "Employee",
+                                    "OfficeLocation": "Site 101 - Miami",
+                                    "UsageLocation": "US",
+                                    "HireDate": "2026-11-02T00:00:00Z",
+                                    "TermDate": ""
+                                }
+                            }
+                        },
+                        {
+                            "method": "POST",
+                            "bulkId": "A439",
+                            "path": "/Users",
+                            "data": {
+                                "schemas": [
+                                    "urn:ietf:params:scim:schemas:core:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User"
+                                ],
+                                "externalId": "A439",
+                                "userName": "car.test@elcarwash.com",
+                                "name": {
+                                    "formatted": "Car Test",
+                                    "givenName": "Car",
+                                    "familyName": "Test"
+                                },
+                                "displayName": "Car Test",
+                                "nickName": "Car",
+                                "title": "Wash Attendant",
+                                "preferredLanguage": "en-US",
+                                "active": true,
+                                "emails": [
+                                    {
+                                        "value": "car.test@elcarwash.com",
+                                        "type": "work",
+                                        "primary": true
+                                    }
+                                ],
+                                "phoneNumbers": [
+                                    {
+                                        "value": "+1 305 555 0102",
+                                        "type": "work"
+                                    }
+                                ],
+                                "addresses": [
+                                    {
+                                        "type": "work",
+                                        "primary": true,
+                                        "streetAddress": "100 Example Ave",
+                                        "locality": "Miami",
+                                        "region": "FL",
+                                        "postalCode": "33101",
+                                        "country": "US"
+                                    }
+                                ],
+                                "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+                                    "employeeNumber": "A439",
+                                    "organization": "El Car Wash",
+                                    "division": "Operations",
+                                    "department": "Site Operations",
+                                    "costCenter": "CC-101",
+                                    "manager": {
+                                        "value": "A43B"
+                                    }
+                                },
+                                "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User": {
+                                    "Persona": "Frontline",
+                                    "EmployeeType": "Employee",
+                                    "OfficeLocation": "Site 101 - Miami",
+                                    "UsageLocation": "US",
+                                    "HireDate": "2026-11-02T00:00:00Z",
+                                    "TermDate": ""
+                                }
+                            }
+                        },
+                        {
+                            "method": "POST",
+                            "bulkId": "A43A",
+                            "path": "/Users",
+                            "data": {
+                                "schemas": [
+                                    "urn:ietf:params:scim:schemas:core:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User"
+                                ],
+                                "externalId": "A43A",
+                                "userName": "detailer.test@elcarwash.com",
+                                "name": {
+                                    "formatted": "Detailer Test",
+                                    "givenName": "Detailer",
+                                    "familyName": "Test"
+                                },
+                                "displayName": "Detailer Test",
+                                "nickName": "Detailer",
+                                "title": "Detailer",
+                                "preferredLanguage": "en-US",
+                                "active": true,
+                                "emails": [
+                                    {
+                                        "value": "detailer.test@elcarwash.com",
+                                        "type": "work",
+                                        "primary": true
+                                    }
+                                ],
+                                "phoneNumbers": [
+                                    {
+                                        "value": "+1 305 555 0103",
+                                        "type": "work"
+                                    }
+                                ],
+                                "addresses": [
+                                    {
+                                        "type": "work",
+                                        "primary": true,
+                                        "streetAddress": "100 Example Ave",
+                                        "locality": "Miami",
+                                        "region": "FL",
+                                        "postalCode": "33101",
+                                        "country": "US"
+                                    }
+                                ],
+                                "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+                                    "employeeNumber": "A43A",
+                                    "organization": "El Car Wash",
+                                    "division": "Operations",
+                                    "department": "Site Operations",
+                                    "costCenter": "CC-101",
+                                    "manager": {
+                                        "value": "A43B"
+                                    }
+                                },
+                                "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User": {
+                                    "Persona": "Frontline",
+                                    "EmployeeType": "Employee",
+                                    "OfficeLocation": "Site 101 - Miami",
+                                    "UsageLocation": "US",
+                                    "HireDate": "2026-11-02T00:00:00Z",
+                                    "TermDate": ""
+                                }
+                            }
+                        },
+                        {
+                            "method": "POST",
+                            "bulkId": "A43C",
+                            "path": "/Users",
+                            "data": {
+                                "schemas": [
+                                    "urn:ietf:params:scim:schemas:core:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User"
+                                ],
+                                "externalId": "A43C",
+                                "userName": "rinse.test@elcarwash.com",
+                                "name": {
+                                    "formatted": "Rinse Test",
+                                    "givenName": "Rinse",
+                                    "familyName": "Test"
+                                },
+                                "displayName": "Rinse Test",
+                                "nickName": "Rinse",
+                                "title": "Corporate Analyst",
+                                "preferredLanguage": "en-US",
+                                "active": true,
+                                "emails": [
+                                    {
+                                        "value": "rinse.test@elcarwash.com",
+                                        "type": "work",
+                                        "primary": true
+                                    }
+                                ],
+                                "phoneNumbers": [
+                                    {
+                                        "value": "+1 305 555 0104",
+                                        "type": "work"
+                                    }
+                                ],
+                                "addresses": [
+                                    {
+                                        "type": "work",
+                                        "primary": true,
+                                        "streetAddress": "200 Example Blvd",
+                                        "locality": "Miami",
+                                        "region": "FL",
+                                        "postalCode": "33131",
+                                        "country": "US"
+                                    }
+                                ],
+                                "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+                                    "employeeNumber": "A43C",
+                                    "organization": "El Car Wash",
+                                    "division": "Corporate",
+                                    "department": "Corporate Services",
+                                    "costCenter": "CC-900"
+                                },
+                                "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User": {
+                                    "Persona": "Corporate User",
+                                    "EmployeeType": "Employee",
+                                    "OfficeLocation": "Corporate HQ - Miami",
+                                    "UsageLocation": "US",
+                                    "HireDate": "2026-11-02T00:00:00Z",
+                                    "TermDate": ""
+                                }
+                            }
+                        },
+                        {
+                            "method": "POST",
+                            "bulkId": "A43H",
+                            "path": "/Users",
+                            "data": {
+                                "schemas": [
+                                    "urn:ietf:params:scim:schemas:core:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User"
+                                ],
+                                "externalId": "C43H",
+                                "userName": "Paycom.test@elcarwash.com",
+                                "name": {
+                                    "formatted": "Shine Test",
+                                    "givenName": "Test",
+                                    "familyName": "PaycomUnitTest"
+                                },
+                                "displayName": "Test PaycomUnitTest",
+                                "nickName": "TPaycomUnitTest",
+                                "title": "Assistant Site Manager",
+                                "preferredLanguage": "en-US",
+                                "active": true,
+                                "emails": [
+                                    {
+                                        "value": "paycom.unittest@elcarwash.com",
+                                        "type": "work",
+                                        "primary": true
+                                    }
+                                ],
+                                "phoneNumbers": [
+                                    {
+                                        "value": "+1 305 555 0109",
+                                        "type": "work"
+                                    }
+                                ],
+                                "addresses": [
+                                    {
+                                        "type": "work",
+                                        "primary": true,
+                                        "streetAddress": "100 Example Ave",
+                                        "locality": "Miami",
+                                        "region": "FL",
+                                        "postalCode": "33101",
+                                        "country": "US"
+                                    }
+                                ],
+                                "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+                                    "employeeNumber": "C43H",
+                                    "organization": "El Car Wash",
+                                    "division": "Operations",
+                                    "department": "Site Operations",
+                                    "costCenter": "CC-101",
+                                    "manager": {
+                                        "value": "A3GU"
+                                    }
+                                },
+                                "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User": {
+                                    "Persona": "SM and Above",
+                                    "EmployeeType": "Employee",
+                                    "OfficeLocation": "Site 101 - Miami",
+                                    "UsageLocation": "US",
+                                    "HireDate": "2026-11-02T00:00:00Z",
+                                    "TermDate": ""
+                                }
+                            }
+                        },
+                        {
+                            "method": "POST",
+                            "bulkId": "C43J",
+                            "path": "/Users",
+                            "data": {
+                                "schemas": [
+                                    "urn:ietf:params:scim:schemas:core:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User"
+                                ],
+                                "externalId": "C43J",
+                                "userName": "paycom.corptest@elcarwash.com",
+                                "name": {
+                                    "formatted": "Test PaycomCorpTest",
+                                    "givenName": "Test",
+                                    "familyName": "PaycomCorpTest"
+                                },
+                                "displayName": "Test PaycomCorpTest",
+                                "nickName": "TPaycomCorpTest",
+                                "title": "Corporate Analyst",
+                                "preferredLanguage": "en-US",
+                                "active": true,
+                                "emails": [
+                                    {
+                                        "value": "paycom.corptest@elcarwash.com",
+                                        "type": "work",
+                                        "primary": true
+                                    }
+                                ],
+                                "phoneNumbers": [
+                                    {
+                                        "value": "+1 305 555 0110",
+                                        "type": "work"
+                                    }
+                                ],
+                                "addresses": [
+                                    {
+                                        "type": "work",
+                                        "primary": true,
+                                        "streetAddress": "200 Example Blvd",
+                                        "locality": "Miami",
+                                        "region": "FL",
+                                        "postalCode": "33131",
+                                        "country": "US"
+                                    }
+                                ],
+                                "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+                                    "employeeNumber": "C43J",
+                                    "organization": "El Car Wash",
+                                    "division": "Corporate",
+                                    "department": "Corporate Services",
+                                    "costCenter": "CC-900",
+                                    "manager": {
+                                        "value": "A3GU"
+                                    }
+                                },
+                                "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User": {
+                                    "Persona": "Corporate User",
+                                    "EmployeeType": "Employee",
+                                    "OfficeLocation": "Corporate HQ - Miami",
+                                    "UsageLocation": "US",
+                                    "HireDate": "2026-11-02T00:00:00Z",
+                                    "TermDate": ""
+                                }
+                            }
+                        },
+                        {
+                            "method": "POST",
+                            "bulkId": "C43K",
+                            "path": "/Users",
+                            "data": {
+                                "schemas": [
+                                    "urn:ietf:params:scim:schemas:core:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+                                    "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User"
+                                ],
+                                "externalId": "C43K",
+                                "userName": "paycom.fronttest@elcarwash.com",
+                                "name": {
+                                    "formatted": "Test PaycomFrontTest",
+                                    "givenName": "Test",
+                                    "familyName": "PaycomFrontTest"
+                                },
+                                "displayName": "Test PaycomFrontTest",
+                                "nickName": "TPaycomFrontTest",
+                                "title": "Tunnel Attendant",
+                                "preferredLanguage": "en-US",
+                                "active": true,
+                                "emails": [
+                                    {
+                                        "value": "paycom.fronttest@elcarwash.com",
+                                        "type": "work",
+                                        "primary": true
+                                    }
+                                ],
+                                "phoneNumbers": [
+                                    {
+                                        "value": "+1 305 555 0111",
+                                        "type": "work"
+                                    }
+                                ],
+                                "addresses": [
+                                    {
+                                        "type": "work",
+                                        "primary": true,
+                                        "streetAddress": "100 Example Ave",
+                                        "locality": "Miami",
+                                        "region": "FL",
+                                        "postalCode": "33101",
+                                        "country": "US"
+                                    }
+                                ],
+                                "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+                                    "employeeNumber": "C43K",
+                                    "organization": "El Car Wash",
+                                    "division": "Operations",
+                                    "department": "Site Operations",
+                                    "costCenter": "CC-101",
+                                    "manager": {
+                                        "value": "A3GU"
+                                    }
+                                },
+                                "urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User": {
+                                    "Persona": "Frontline",
+                                    "EmployeeType": "Employee",
+                                    "OfficeLocation": "Site 101 - Miami",
+                                    "UsageLocation": "US",
+                                    "HireDate": "2026-11-02T00:00:00Z",
+                                    "TermDate": ""
+                                }
+                            }
+                        }
+                    ],
+                    "failOnErrors": null
+                },
+                "runAfter": {}
+            },
+            "Initialize_Global_Variables_": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "FinalUPN",
+                            "type": "string"
+                        },
+                        {
+                            "name": "DuplicateCounter",
+                            "type": "integer",
+                            "value": 1
+                        },
+                        {
+                            "name": "MaxDuplicateUPNCounter",
+                            "type": "integer",
+                            "value": 30
+                        },
+                        {
+                            "name": "UserUPN",
+                            "type": "string"
+                        },
+                        {
+                            "name": "CandidateUPN",
+                            "type": "string",
+                            "value": ""
+                        },
+                        {
+                            "name": "UPNAvailable",
+                            "type": "boolean",
+                            "value": false
+                        },
+                        {
+                            "name": "ProvisionOperations",
+                            "type": "array",
+                            "value": []
+                        },
+                        {
+                            "name": "NewUsers",
+                            "type": "array",
+                            "value": []
+                        },
+                        {
+                            "name": "AssignedUPNs",
+                            "type": "array",
+                            "value": []
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Compose_Users": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "For_each": {
+                "type": "Foreach",
+                "foreach": "@outputs('Compose_Users')?['Operations']",
+                "actions": {
+                    "current_user": {
+                        "type": "Compose",
+                        "inputs": "@item()"
+                    },
+                    "Check_existing_user": {
+                        "type": "Http",
+                        "inputs": {
+                            "uri": "@concat(\n'https://graph.microsoft.com/v1.0/users?$filter=employeeId eq ''',\nitem()?['data']?['urn:ietf:params:scim:schemas:extension:enterprise:2.0:User']?['employeeNumber'],\n''''\n)",
+                            "method": "GET",
+                            "authentication": {
+                                "type": "ManagedServiceIdentity",
+                                "audience": "https://graph.microsoft.com"
+                            }
+                        },
+                        "runAfter": {
+                            "current_user": [
+                                "Succeeded"
+                            ]
+                        },
+                        "runtimeConfiguration": {
+                            "contentTransfer": {
+                                "transferMode": "Chunked"
+                            }
+                        }
+                    },
+                    "Is_User_Exists": {
+                        "type": "If",
+                        "expression": {
+                            "and": [
+                                {
+                                    "greater": [
+                                        "@length(body('Check_existing_user')?['value'])",
+                                        0
+                                    ]
+                                }
+                            ]
+                        },
+                        "actions": {
+                            "Existing_user_found": {
+                                "type": "Compose",
+                                "inputs": "No action required"
+                            },
+                            "Append_Existing_User_Operation": {
+                                "type": "AppendToArrayVariable",
+                                "inputs": {
+                                    "name": "ProvisionOperations",
+                                    "value": "@item()"
+                                },
+                                "runAfter": {
+                                    "Existing_user_found": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            }
+                        },
+                        "else": {
+                            "actions": {
+                                "New_User": {
+                                    "type": "Compose",
+                                    "inputs": "New User"
+                                },
+                                "Frontline_vs_Knowledge_Worker_Check": {
+                                    "type": "If",
+                                    "expression": {
+                                        "and": [
+                                            {
+                                                "equals": [
+                                                    "@item()?['data']?['urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User']?['Persona']",
+                                                    "Frontline"
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "actions": {
+                                        "Frontline_Worker": {
+                                            "type": "Compose",
+                                            "inputs": "Frontline Worker"
+                                        },
+                                        "Generate_Frontline_UPN": {
+                                            "type": "Compose",
+                                            "description": "",
+                                            "inputs": "@concat(\nitem()?['data']?['urn:ietf:params:scim:schemas:extension:enterprise:2.0:User']?['employeeNumber'],\n'@elcarwash.com'\n)",
+                                            "runAfter": {
+                                                "Frontline_Worker": [
+                                                    "Succeeded"
+                                                ]
+                                            }
+                                        },
+                                        "Initialize_Frontline_UPN": {
+                                            "type": "SetVariable",
+                                            "inputs": {
+                                                "name": "FinalUPN",
+                                                "value": "@{outputs('Generate_Frontline_UPN')}"
+                                            },
+                                            "runAfter": {
+                                                "Generate_Frontline_UPN": [
+                                                    "Succeeded"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "else": {
+                                        "actions": {
+                                            "Knowledge_Worker": {
+                                                "type": "Compose",
+                                                "inputs": "Knowledge Worker"
+                                            },
+                                            "CleanLastName": {
+                                                "type": "Compose",
+                                                "inputs": "@replace(\nreplace(\nreplace(\nreplace(\ncoalesce(\nitem()?['data']?['name']?['familyName'],\n''\n),\n'''',\n''\n),\n'-',\n''\n),\n'.',\n''\n),\n' ',\n''\n)",
+                                                "runAfter": {
+                                                    "Knowledge_Worker": [
+                                                        "Succeeded"
+                                                    ]
+                                                }
+                                            },
+                                            "Generate_Knowledge_UPN": {
+                                                "type": "Compose",
+                                                "inputs": "@concat(\ntoLower(\nsubstring(\ncoalesce(\nitem()?['data']?['name']?['givenName'],\n'X'\n),\n0,\n1\n)\n),\ntoLower(outputs('CleanLastName')),\n'@elcarwash.com'\n)",
+                                                "runAfter": {
+                                                    "CleanLastName": [
+                                                        "Succeeded"
+                                                    ]
+                                                }
+                                            },
+                                            "UPN_length": {
+                                                "type": "Compose",
+                                                "inputs": "@if(\n    greater(\n        length(\n            first(\n                split(\n                    outputs('Generate_Knowledge_UPN'),\n                    '@'\n                )\n            )\n        ),\n        40\n    ),\n    concat(\n        substring(\n            first(\n                split(\n                    outputs('Generate_Knowledge_UPN'),\n                    '@'\n                )\n            ),\n            0,\n            40\n        ),\n        '@elcarwash.com'\n    ),\n    outputs('Generate_Knowledge_UPN')\n)",
+                                                "runAfter": {
+                                                    "Generate_Knowledge_UPN": [
+                                                        "Succeeded"
+                                                    ]
+                                                }
+                                            },
+                                            "Initialize_UserUPN": {
+                                                "type": "SetVariable",
+                                                "inputs": {
+                                                    "name": "UserUPN",
+                                                    "value": "@{outputs('UPN_length')}"
+                                                },
+                                                "runAfter": {
+                                                    "UPN_length": [
+                                                        "Succeeded"
+                                                    ]
+                                                }
+                                            },
+                                            "Reset_CandidateUPN": {
+                                                "type": "SetVariable",
+                                                "inputs": {
+                                                    "name": "CandidateUPN",
+                                                    "value": "@variables('UserUPN')"
+                                                },
+                                                "runAfter": {
+                                                    "Initialize_UserUPN": [
+                                                        "Succeeded"
+                                                    ]
+                                                }
+                                            },
+                                            "Reset_DuplicateCounter": {
+                                                "type": "SetVariable",
+                                                "inputs": {
+                                                    "name": "DuplicateCounter",
+                                                    "value": 1
+                                                },
+                                                "runAfter": {
+                                                    "Reset_CandidateUPN": [
+                                                        "Succeeded"
+                                                    ]
+                                                }
+                                            },
+                                            "Reset_UPNAvailable": {
+                                                "type": "SetVariable",
+                                                "inputs": {
+                                                    "name": "UPNAvailable",
+                                                    "value": false
+                                                },
+                                                "runAfter": {
+                                                    "Reset_DuplicateCounter": [
+                                                        "Succeeded"
+                                                    ]
+                                                }
+                                            },
+                                            "Until_UPN_is_unique": {
+                                                "type": "Until",
+                                                "expression": "@or(equals(variables('UPNAvailable'), true), greaterOrEquals(variables('DuplicateCounter'), variables('MaxDuplicateUPNCounter')))",
+                                                "limit": {
+                                                    "count": 30,
+                                                    "timeout": "PT10M"
+                                                },
+                                                "actions": {
+                                                    "Check_UPN": {
+                                                        "type": "Http",
+                                                        "inputs": {
+                                                            "uri": "https://graph.microsoft.com/v1.0/users",
+                                                            "method": "GET",
+                                                            "queries": {
+                                                                "$filter": "userPrincipalName eq '@{replace(variables('CandidateUPN'), '''', '''''')}'",
+                                                                "$select": "id,userPrincipalName"
+                                                            },
+                                                            "authentication": {
+                                                                "type": "ManagedServiceIdentity",
+                                                                "audience": "https://graph.microsoft.com"
+                                                            }
+                                                        },
+                                                        "runtimeConfiguration": {
+                                                            "contentTransfer": {
+                                                                "transferMode": "Chunked"
+                                                            }
+                                                        }
+                                                    },
+                                                    "Is_UPN_Free": {
+                                                        "type": "If",
+                                                        "expression": {
+                                                            "and": [
+                                                                {
+                                                                    "equals": [
+                                                                        "@length(body('Check_UPN')?['value'])",
+                                                                        0
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "not": {
+                                                                        "contains": [
+                                                                            "@variables('AssignedUPNs')",
+                                                                            "@toLower(variables('CandidateUPN'))"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            ]
+                                                        },
+                                                        "actions": {
+                                                            "Mark_UPN_Available": {
+                                                                "type": "SetVariable",
+                                                                "inputs": {
+                                                                    "name": "UPNAvailable",
+                                                                    "value": true
+                                                                }
+                                                            }
+                                                        },
+                                                        "else": {
+                                                            "actions": {
+                                                                "Increment_DuplicateCounter": {
+                                                                    "type": "IncrementVariable",
+                                                                    "inputs": {
+                                                                        "name": "DuplicateCounter",
+                                                                        "value": 1
+                                                                    }
+                                                                },
+                                                                "Set_Next_CandidateUPN": {
+                                                                    "type": "SetVariable",
+                                                                    "inputs": {
+                                                                        "name": "CandidateUPN",
+                                                                        "value": "@concat(first(split(variables('UserUPN'), '@')), string(variables('DuplicateCounter')), '@elcarwash.com')"
+                                                                    },
+                                                                    "runAfter": {
+                                                                        "Increment_DuplicateCounter": [
+                                                                            "Succeeded"
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "runAfter": {
+                                                            "Check_UPN": [
+                                                                "Succeeded"
+                                                            ]
+                                                        }
+                                                    }
+                                                },
+                                                "runAfter": {
+                                                    "Reset_UPNAvailable": [
+                                                        "Succeeded"
+                                                    ]
+                                                }
+                                            },
+                                            "Set_Knowledge_FinalUPN": {
+                                                "type": "SetVariable",
+                                                "inputs": {
+                                                    "name": "FinalUPN",
+                                                    "value": "@{variables('CandidateUPN')}"
+                                                },
+                                                "runAfter": {
+                                                    "Until_UPN_is_unique": [
+                                                        "Succeeded"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "New_User": [
+                                            "Succeeded"
+                                        ]
+                                    }
+                                },
+                                "Append_Assigned_UPN": {
+                                    "type": "AppendToArrayVariable",
+                                    "inputs": {
+                                        "name": "AssignedUPNs",
+                                        "value": "@toLower(variables('FinalUPN'))"
+                                    },
+                                    "runAfter": {
+                                        "Frontline_vs_Knowledge_Worker_Check": [
+                                            "Succeeded"
+                                        ]
+                                    }
+                                },
+                                "Append_New_User_Operation": {
+                                    "type": "AppendToArrayVariable",
+                                    "inputs": {
+                                        "name": "ProvisionOperations",
+                                        "value": "@if(equals(item()?['data']?['urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User']?['Persona'], 'Frontline'), setProperty(item(), 'data', removeProperty(setProperty(item()?['data'], 'userName', variables('FinalUPN')), 'emails')), setProperty(item(), 'data', setProperty(setProperty(item()?['data'], 'userName', variables('FinalUPN')), 'emails', createArray(json(concat('{\"value\":\"', variables('FinalUPN'), '\",\"type\":\"work\",\"primary\":true}'))))))"
+                                    },
+                                    "runAfter": {
+                                        "Append_Assigned_UPN": [
+                                            "Succeeded"
+                                        ]
+                                    }
+                                },
+                                "Append_New_User_Details": {
+                                    "type": "AppendToArrayVariable",
+                                    "inputs": {
+                                        "name": "NewUsers",
+                                        "value": "@setProperty(item(), 'finalUPN', variables('FinalUPN'))"
+                                    },
+                                    "runAfter": {
+                                        "Append_New_User_Operation": [
+                                            "Succeeded"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "runAfter": {
+                            "Check_existing_user": [
+                                "Succeeded"
+                            ]
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Initialize_Global_Variables_": [
+                        "Succeeded"
+                    ]
+                },
+                "runtimeConfiguration": {
+                    "concurrency": {
+                        "repetitions": 1
+                    }
+                }
+            },
+            "For_each_New_User": {
+                "type": "Foreach",
+                "foreach": "@variables('NewUsers')",
+                "actions": {
+                    "Until_User_Created": {
+                        "type": "Until",
+                        "expression": "@greater(length(body('Check_User_Created')?['value']), 0)",
+                        "limit": {
+                            "count": 2,
+                            "timeout": "PT1H"
+                        },
+                        "actions": {
+                            "Wait_1_Minute": {
+                                "type": "Wait",
+                                "inputs": {
+                                    "interval": {
+                                        "count": 1,
+                                        "unit": "Minute"
+                                    }
+                                }
+                            },
+                            "Check_User_Created": {
+                                "type": "Http",
+                                "inputs": {
+                                    "uri": "https://graph.microsoft.com/v1.0/users",
+                                    "method": "GET",
+                                    "queries": {
+                                        "$filter": "userPrincipalName eq '@{replace(items('For_each_New_User')?['finalUPN'], '''', '''''')}'",
+                                        "$select": "id,userPrincipalName"
+                                    },
+                                    "authentication": {
+                                        "type": "ManagedServiceIdentity",
+                                        "audience": "https://graph.microsoft.com"
+                                    }
+                                },
+                                "runAfter": {
+                                    "Wait_1_Minute": [
+                                        "Succeeded"
+                                    ]
+                                },
+                                "runtimeConfiguration": {
+                                    "contentTransfer": {
+                                        "transferMode": "Chunked"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "Is_User_Created": {
+                        "type": "If",
+                        "expression": {
+                            "and": [
+                                {
+                                    "greater": [
+                                        "@length(body('Check_User_Created')?['value'])",
+                                        0
+                                    ]
+                                }
+                            ]
+                        },
+                        "actions": {
+                            "Set_Temp_Password": {
+                                "type": "Http",
+                                "inputs": {
+                                    "uri": "https://graph.microsoft.com/v1.0/users/@{first(body('Check_User_Created')?['value'])?['id']}",
+                                    "method": "PATCH",
+                                    "headers": {
+                                        "Content-Type": "application/json"
+                                    },
+                                    "body": {
+                                        "passwordProfile": {
+                                            "password": "@{outputs('GenerateTempPassword')}",
+                                            "forceChangePasswordNextSignIn": true
+                                        }
+                                    },
+                                    "authentication": {
+                                        "type": "ManagedServiceIdentity",
+                                        "audience": "https://graph.microsoft.com"
+                                    }
+                                },
+                                "runAfter": {
+                                    "GenerateTempPassword": [
+                                        "Succeeded"
+                                    ]
+                                },
+                                "runtimeConfiguration": {
+                                    "contentTransfer": {
+                                        "transferMode": "Chunked"
+                                    },
+                                    "secureData": {
+                                        "properties": [
+                                            "inputs"
+                                        ]
+                                    }
+                                }
+                            },
+                            "Get_Manager": {
+                                "type": "Http",
+                                "inputs": {
+                                    "uri": "@concat(\n'https://graph.microsoft.com/v1.0/users?$filter=employeeId eq ''',\nitems('For_each_New_User')?['data']?['urn:ietf:params:scim:schemas:extension:enterprise:2.0:User']?['manager']?['value'],\n''''\n)",
+                                    "method": "GET",
+                                    "authentication": {
+                                        "type": "ManagedServiceIdentity",
+                                        "audience": "https://graph.microsoft.com"
+                                    }
+                                },
+                                "runAfter": {
+                                    "Set_Temp_Password": [
+                                        "Succeeded"
+                                    ]
+                                },
+                                "runtimeConfiguration": {
+                                    "contentTransfer": {
+                                        "transferMode": "Chunked"
+                                    }
+                                }
+                            },
+                            "Compose": {
+                                "type": "Compose",
+                                "inputs": "@first(body('Get_Manager')?['value'])?['mail']",
+                                "runAfter": {
+                                    "Get_Manager": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            },
+                            "send_email_to_manager": {
+                                "type": "Http",
+                                "inputs": {
+                                    "uri": "https://graph.microsoft.com/v1.0/users/noreply@elcarwash.com/sendMail",
+                                    "method": "POST",
+                                    "headers": {
+                                        "Content-Type": "application/json"
+                                    },
+                                    "body": {
+                                        "message": {
+                                            "subject": "New Employee Onboarded in Microsoft Entra ID - @{items('For_each_New_User')?['data']?['displayName']}",
+                                            "body": {
+                                                "contentType": "HTML",
+                                                "content": "<p>Hello @{outputs('Compose')},</p><p>A new employee has been successfully onboarded to <strong>Microsoft Entra ID</strong> and has been assigned to you as their reporting manager.</p><h3>Employee Information</h3><table border='1' cellpadding='6' cellspacing='0' style='border-collapse:collapse;'><tr><th>Attribute</th><th>Value</th></tr><tr><td>Employee ID (Paycom ID)</td><td>@{items('For_each_New_User')?['data']?['urn:ietf:params:scim:schemas:extension:enterprise:2.0:User']?['employeeNumber']}</td></tr><tr><td>Employee Name</td><td>@{items('For_each_New_User')?['data']?['displayName']}</td></tr><tr><td>Position Code</td><td>@{items('For_each_New_User')?['data']?['title']}</td></tr><tr><td>User Principal Name (UPN)</td><td>@{items('For_each_New_User')?['finalUPN']}</td></tr><tr><td>Email Address</td><td>@{if(equals(items('For_each_New_User')?['data']?['urn:ietf:params:scim:schemas:extension:elcarwash:1.0:User']?['Persona'], 'Frontline'), 'Not applicable (Frontline worker)', items('For_each_New_User')?['finalUPN'])}</td></tr><tr><td>Temporary Password</td><td>@{outputs('GenerateTempPassword')}</td></tr></table><h3>Action Required</h3><p>Please coordinate with your team member and securely share the temporary password listed above.</p><p>For security purposes, the employee will be required to change their password upon first sign-in.</p><h3>Employee Sign-In Instructions</h3><ol><li>Navigate to https://myaccount.microsoft.com</li><li>Sign in using UPN: @{items('For_each_New_User')?['finalUPN']}</li><li>Enter the temporary password</li><li>Change password when prompted</li><li>Access assigned applications</li></ol><h3>Access Provisioning</h3><p>Based on the employee's position code and birthright access policies, access to applicable downstream applications will be provisioned automatically.</p><p>If any employee information is incorrect or assistance is required, please contact the IAM Team.</p><br/><p>Regards,<br/><strong>IAM Entra Automation Service</strong><br/><strong>Identity & Access Management (IAM) Team</strong></p>"
+                                            },
+                                            "toRecipients": [
+                                                {
+                                                    "emailAddress": {
+                                                        "address": "hkaza@elcarwash.com"
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "saveToSentItems": true
+                                    },
+                                    "authentication": {
+                                        "type": "ManagedServiceIdentity",
+                                        "audience": "https://graph.microsoft.com"
+                                    }
+                                },
+                                "runAfter": {
+                                    "Compose": [
+                                        "Succeeded"
+                                    ]
+                                },
+                                "runtimeConfiguration": {
+                                    "contentTransfer": {
+                                        "transferMode": "Chunked"
+                                    },
+                                    "secureData": {
+                                        "properties": [
+                                            "inputs"
+                                        ]
+                                    }
+                                }
+                            },
+                            "GenerateTempPassword": {
+                                "type": "Compose",
+                                "inputs": "@concat(\n    'Welcome!',\n    substring(guid(),0,10),\n    '!'\n)",
+                                "runtimeConfiguration": {
+                                    "secureData": {
+                                        "properties": [
+                                            "inputs"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "else": {
+                            "actions": {
+                                "Alert_User_Not_Created": {
+                                    "type": "Http",
+                                    "inputs": {
+                                        "uri": "https://graph.microsoft.com/v1.0/users/noreply@elcarwash.com/sendMail",
+                                        "method": "POST",
+                                        "headers": {
+                                            "Content-Type": "application/json"
+                                        },
+                                        "body": {
+                                            "message": {
+                                                "subject": "Provisioning check: account not found - @{items('For_each_New_User')?['finalUPN']}",
+                                                "body": {
+                                                    "contentType": "HTML",
+                                                    "content": "<p>The account <b>@{items('For_each_New_User')?['finalUPN']}</b> (Employee ID @{items('For_each_New_User')?['data']?['externalId']}) was not found in Entra ID within 60 minutes of upload. No password was set and no manager email was sent. Please check the provisioning logs.</p>"
+                                                },
+                                                "toRecipients": [
+                                                    {
+                                                        "emailAddress": {
+                                                            "address": "hkaza@elcarwash.com"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "authentication": {
+                                            "type": "ManagedServiceIdentity",
+                                            "audience": "https://graph.microsoft.com"
+                                        }
+                                    },
+                                    "runtimeConfiguration": {
+                                        "contentTransfer": {
+                                            "transferMode": "Chunked"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "runAfter": {
+                            "Until_User_Created": [
+                                "Succeeded",
+                                "Failed",
+                                "TimedOut"
+                            ]
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Provision_User_Details": [
+                        "Succeeded"
+                    ]
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {}
+        }
+    }
+}
